@@ -245,27 +245,38 @@ static int64 I64_of_int32(int32 x)
 #define I64_of_intnat I64_of_int32
 #define I64_to_intnat I64_to_int32
 
-static double I64_to_double(int64 x)
+static __double I64_to_double(int64 x)
 {
-  double res;
+  __double res;
   int32 sign = x.h;
   if (sign < 0) x = I64_neg(x);
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  res = fix16_ldexp((__double) x.h, 32) + x.l;
+#else
   res = ldexp((double) x.h, 32) + x.l;
+#endif
   if (sign < 0) res = -res;
   return res;
 }
 
-static int64 I64_of_double(double f)
+static int64 I64_of_double(__double f)
 {
   int64 res;
-  double frac, integ;
+  __double frac, integ;
   int neg;
 
   neg = (f < 0);
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  f = fix16_abs(f);
+  frac = fix16_modf(fix16_ldexp(f, -32), &integ);
+  res.h = (uint32) integ;
+  res.l = (uint32) fix16_ldexp(frac, 32);
+#else
   f = fabs(f);
   frac = modf(ldexp(f, -32), &integ);
   res.h = (uint32) integ;
   res.l = (uint32) ldexp(frac, 32);
+#endif
   if (neg) res = I64_neg(res);
   return res;
 }

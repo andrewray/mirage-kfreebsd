@@ -245,7 +245,12 @@ void caml_empty_minor_heap (void)
       }
     }
     if (caml_young_ptr < caml_young_start) caml_young_ptr = caml_young_start;
+#if defined(__FreeBSD__) && defined(_KERNEL)
+    caml_stat_minor_words = fixpt_add(caml_stat_minor_words,
+      fixpt_from_int(Wsize_bsize (caml_young_end - caml_young_ptr)));
+#else
     caml_stat_minor_words += Wsize_bsize (caml_young_end - caml_young_ptr);
+#endif
     caml_young_ptr = caml_young_end;
     caml_young_limit = caml_young_start;
     clear_table (&caml_ref_table);
@@ -275,7 +280,12 @@ CAMLexport void caml_minor_collection (void)
 
   caml_empty_minor_heap ();
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  caml_stat_promoted_words = fixpt_add(caml_stat_promoted_words,
+    fixpt_from_int(caml_allocated_words - prev_alloc_words));
+#else
   caml_stat_promoted_words += caml_allocated_words - prev_alloc_words;
+#endif
   ++ caml_stat_minor_collections;
   caml_major_collection_slice (0);
   caml_force_major_slice = 0;

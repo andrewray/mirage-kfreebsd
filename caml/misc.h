@@ -38,7 +38,7 @@ typedef size_t asize_t;
 typedef char * addr;
 /* </private> */
 
-#ifdef __GNUC__
+#if defined(__GNUC__) && !defined(__FreeBSD__) && !defined(_KERNEL)
   /* Works only in GCC 2.5 and later */
   #define Noreturn __attribute__ ((noreturn))
 #else

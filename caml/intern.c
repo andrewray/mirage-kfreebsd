@@ -124,9 +124,9 @@ static void intern_cleanup(void)
   intern_free_stack();
 }
 
-static void readfloat(double * dest, unsigned int code)
+static void readfloat(__double * dest, unsigned int code)
 {
-  if (sizeof(double) != 8) {
+  if (sizeof(__double) != 8) {
     intern_cleanup();
     caml_invalid_argument("input_value: non-standard floats");
   }
@@ -147,10 +147,10 @@ static void readfloat(double * dest, unsigned int code)
 #endif
 }
 
-static void readfloats(double * dest, mlsize_t len, unsigned int code)
+static void readfloats(__double * dest, mlsize_t len, unsigned int code)
 {
   mlsize_t i;
-  if (sizeof(double) != 8) {
+  if (sizeof(__double) != 8) {
     intern_cleanup();
     caml_invalid_argument("input_value: non-standard floats");
   }
@@ -424,7 +424,7 @@ static void intern_rec(value *dest)
         if (intern_obj_table != NULL) intern_obj_table[obj_counter++] = v;
         *intern_dest = Make_header(Double_wosize, Double_tag, intern_color);
         intern_dest += 1 + Double_wosize;
-        readfloat((double *) v, code);
+        readfloat((__double *) v, code);
         break;
       case CODE_DOUBLE_ARRAY8_LITTLE:
       case CODE_DOUBLE_ARRAY8_BIG:
@@ -435,7 +435,7 @@ static void intern_rec(value *dest)
         if (intern_obj_table != NULL) intern_obj_table[obj_counter++] = v;
         *intern_dest = Make_header(size, Double_array_tag, intern_color);
         intern_dest += 1 + size;
-        readfloats((double *) v, len, code);
+        readfloats((__double *) v, len, code);
         break;
       case CODE_DOUBLE_ARRAY32_LITTLE:
       case CODE_DOUBLE_ARRAY32_BIG:
@@ -807,6 +807,7 @@ CAMLexport int64 caml_deserialize_sint_8(void)
   return i;
 }
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 CAMLexport float caml_deserialize_float_4(void)
 {
   float f;
@@ -820,6 +821,7 @@ CAMLexport double caml_deserialize_float_8(void)
   caml_deserialize_block_float_8(&f, 1);
   return f;
 }
+#endif
 
 CAMLexport void caml_deserialize_block_1(void * data, intnat len)
 {

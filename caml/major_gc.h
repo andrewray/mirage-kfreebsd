@@ -33,7 +33,7 @@ typedef struct {
 extern int caml_gc_phase;
 extern int caml_gc_subphase;
 extern uintnat caml_allocated_words;
-extern double caml_extra_heap_resources;
+extern __double caml_extra_heap_resources;
 extern uintnat caml_dependent_size, caml_dependent_allocated;
 extern uintnat caml_fl_size_at_phase_change;
 

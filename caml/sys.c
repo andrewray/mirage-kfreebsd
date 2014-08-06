@@ -22,7 +22,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#if !_WIN32
+#if !defined(_WIN32)
 #include <sys/wait.h>
 #endif
 #include "config.h"
@@ -51,7 +51,11 @@
 
 static char * error_message(void)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return NULL;
+#else
   return strerror(errno);
+#endif
 }
 
 #ifndef EAGAIN
@@ -84,11 +88,15 @@ CAMLexport void caml_sys_error(value arg)
 
 CAMLexport void caml_sys_io_error(value arg)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  caml_sys_error(arg);
+#else
   if (errno == EAGAIN || errno == EWOULDBLOCK) {
     caml_raise_sys_blocked_io();
   } else {
     caml_sys_error(arg);
   }
+#endif
 }
 
 CAMLprim value caml_sys_exit(value retcode)
@@ -96,7 +104,11 @@ CAMLprim value caml_sys_exit(value retcode)
 #ifndef NATIVE_CODE
   caml_debugger(PROGRAM_EXIT);
 #endif
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  printf("caml_sys_exit");
+#else
   exit(Int_val(retcode));
+#endif
   return Val_unit;
 }
 
@@ -114,14 +126,20 @@ CAMLprim value caml_sys_exit(value retcode)
 #endif
 #endif
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 static int sys_open_flags[] = {
   O_RDONLY, O_WRONLY, O_APPEND | O_WRONLY, O_CREAT, O_TRUNC, O_EXCL,
   O_BINARY, O_TEXT, O_NONBLOCK
 };
+#endif
 
 CAMLprim value caml_sys_open(value path, value vflags, value vperm)
 {
   CAMLparam3(path, vflags, vperm);
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  caml_sys_error(path);
+  CAMLreturn(Val_long(-1));
+#else
   int fd, flags, perm;
   char * p;
 
@@ -141,22 +159,32 @@ CAMLprim value caml_sys_open(value path, value vflags, value vperm)
   caml_stat_free(p);
   if (fd == -1) caml_sys_error(path);
   CAMLreturn(Val_long(fd));
+#endif
 }
 
 CAMLprim value caml_sys_close(value fd)
 {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   close(Int_val(fd));
+#endif
   return Val_unit;
 }
 
 CAMLprim value caml_sys_file_exists(value name)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return Val_bool(0);
+#else
   struct stat st;
   return Val_bool(stat(String_val(name), &st) == 0);
+#endif
 }
 
 CAMLprim value caml_sys_is_directory(value name)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return Val_bool(0);
+#else
   struct stat st;
   if (stat(String_val(name), &st) == -1) caml_sys_error(name);
 #ifdef S_ISDIR
@@ -164,31 +192,41 @@ CAMLprim value caml_sys_is_directory(value name)
 #else
   return Val_bool(st.st_mode & S_IFDIR);
 #endif
+#endif /* __FreeBSD__ && _KERNEL */
 }
 
 CAMLprim value caml_sys_remove(value name)
 {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   int ret;
   ret = unlink(String_val(name));
   if (ret != 0) caml_sys_error(name);
+#endif
   return Val_unit;
 }
 
 CAMLprim value caml_sys_rename(value oldname, value newname)
 {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   if (rename(String_val(oldname), String_val(newname)) != 0)
     caml_sys_error(NO_ARG);
+#endif
   return Val_unit;
 }
 
 CAMLprim value caml_sys_chdir(value dirname)
 {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   if (chdir(String_val(dirname)) != 0) caml_sys_error(dirname);
+#endif
   return Val_unit;
 }
 
 CAMLprim value caml_sys_getcwd(value unit)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_string(NULL);
+#else
   char buff[4096];
 #ifdef HAS_GETCWD
   if (getcwd(buff, sizeof(buff)) == 0) caml_sys_error(NO_ARG);
@@ -196,14 +234,20 @@ CAMLprim value caml_sys_getcwd(value unit)
   if (getwd(buff) == 0) caml_sys_error(NO_ARG);
 #endif /* HAS_GETCWD */
   return caml_copy_string(buff);
+#endif
 }
 
 CAMLprim value caml_sys_getenv(value var)
 {
   char * res;
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  res = 0;
+  caml_raise_not_found();
+#else
   res = getenv(String_val(var));
   if (res == 0) caml_raise_not_found();
+#endif
   return caml_copy_string(res);
 }
 
@@ -242,6 +286,9 @@ void caml_sys_init(char * exe_name, char **argv)
 CAMLprim value caml_sys_system_command(value command)
 {
   CAMLparam1 (command);
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  CAMLreturn (Val_int(255));
+#else
   int status, retcode;
   char *buf;
   intnat len;
@@ -259,6 +306,7 @@ CAMLprim value caml_sys_system_command(value command)
   else
     retcode = 255;
   CAMLreturn (Val_int(retcode));
+#endif
 }
 
 CAMLprim value caml_sys_time(value unit)
@@ -282,8 +330,13 @@ CAMLprim value caml_sys_time(value unit)
     times(&t);
     return caml_copy_double((double)(t.tms_utime + t.tms_stime) / CLK_TCK);
   #else
+    #if defined(__FreeBSD__) && defined(_KERNEL)
+    printf("CAML: caml_sys_time()\n");
+    return Val_long(0);
+    #else
     /* clock() is standard ANSI C */
     return caml_copy_double((double)clock() / CLOCKS_PER_SEC);
+    #endif /* __FreeBSD__ && _KERNEL */
   #endif
 #endif
 }
@@ -300,6 +353,9 @@ CAMLprim value caml_sys_random_seed (value unit)
 #ifdef _WIN32
   n = caml_win32_random_seed(data);
 #else
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  n = 0;
+#else
   int fd;
   n = 0;
   /* Try /dev/urandom first */
@@ -310,6 +366,7 @@ CAMLprim value caml_sys_random_seed (value unit)
     close(fd);
     while (nread > 0) data[n++] = buffer[--nread];
   }
+#endif /* __FreeBSD__ && _KERNEL */
   /* If the read from /dev/urandom fully succeeded, we now have 96 bits
      of good random data and can stop here.  Otherwise, complement
      whatever we got (probably nothing) with some not-very-random data. */
@@ -319,15 +376,18 @@ CAMLprim value caml_sys_random_seed (value unit)
     gettimeofday(&tv, NULL);
     data[n++] = tv.tv_usec;
     data[n++] = tv.tv_sec;
+#elif defined(__FreeBSD__) && defined(_KERNEL)
+    while (n < 12)
+        data[n++] = random();
 #else
     data[n++] = time(NULL);
-#endif
+#endif /* HAS_GETTIMEOFDAY */
 #ifdef HAS_UNISTD
     data[n++] = getpid();
     data[n++] = getppid();
-#endif
+#endif /* HAS_UNISTD */
   }
-#endif
+#endif /* _WIN32 */
   /* Convert to an OCaml array of ints */
   res = caml_alloc_small(n, 0);
   for (i = 0; i < n; i++) Field(res, i) = Val_long(data[i]);
@@ -382,6 +442,10 @@ CAMLprim value caml_sys_get_config(value unit)
 
 CAMLprim value caml_sys_read_directory(value path)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  printf("CAML: caml_sys_read_directory()\n");
+  return 0;
+#else
   CAMLparam1(path);
   CAMLlocal1(result);
   struct ext_table tbl;
@@ -395,4 +459,5 @@ CAMLprim value caml_sys_read_directory(value path)
   result = caml_copy_string_array((char const **) tbl.contents);
   caml_ext_table_free(&tbl, 1);
   CAMLreturn(result);
+#endif
 }

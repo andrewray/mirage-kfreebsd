@@ -14,6 +14,10 @@
 #ifndef CAML_MLVALUES_H
 #define CAML_MLVALUES_H
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+#include <fixmath.h>
+#endif
+
 #ifndef CAML_NAME_SPACE
 #include "compatibility.h"
 #endif
@@ -228,10 +232,21 @@ CAMLextern mlsize_t caml_string_length (value);   /* size in bytes */
 
 /* Floating-point numbers. */
 #define Double_tag 253
+#if defined(__FreeBSD__) && defined(_KERNEL)
+#define Double_wosize ((sizeof(fixpt) / sizeof(value)))
+#else
 #define Double_wosize ((sizeof(double) / sizeof(value)))
+#endif /* __FreeBSD__ && _KERNEL */
 #ifndef ARCH_ALIGN_DOUBLE
+#if defined(__FreeBSD__) && defined(_KERNEL)
+#define Double_val(v) (* (fixpt *)(v))
+#define Store_double_val(v,d) (* (fixpt *)(v) = (d))
+#define __double fixpt
+#else
 #define Double_val(v) (* (double *)(v))
 #define Store_double_val(v,d) (* (double *)(v) = (d))
+#define __double double
+#endif /* __FreeBSD__ && _KERNEL */
 #else
 CAMLextern double caml_Double_val (value);
 CAMLextern void caml_Store_double_val (value,double);
@@ -241,12 +256,21 @@ CAMLextern void caml_Store_double_val (value,double);
 
 /* Arrays of floating-point numbers. */
 #define Double_array_tag 254
+#if defined(__FreeBSD__) && defined(_KERNEL)
+#define Double_field(v,i) Double_val((value)((fixpt *)(v) + (i)))
+#define Store_double_field(v,i,d) do{ \
+  mlsize_t caml__temp_i = (i); \
+  fixpt caml__temp_d = (d); \
+  Store_double_val((value)((fixpt *) (v) + caml__temp_i), caml__temp_d); \
+}while(0)
+#else
 #define Double_field(v,i) Double_val((value)((double *)(v) + (i)))
 #define Store_double_field(v,i,d) do{ \
   mlsize_t caml__temp_i = (i); \
   double caml__temp_d = (d); \
   Store_double_val((value)((double *) (v) + caml__temp_i), caml__temp_d); \
 }while(0)
+#endif /* __FreeBSD__ && _KERNEL */
 CAMLextern mlsize_t caml_array_length (value);   /* size in items */
 CAMLextern int caml_is_double_array (value);   /* 0 is false, 1 is true */
 

@@ -16,7 +16,7 @@
 
 #include "misc.h"
 
-extern double
+extern fixpt
      caml_stat_minor_words,
      caml_stat_promoted_words,
      caml_stat_major_words;

@@ -21,8 +21,10 @@
 CAMLextern uint32 caml_hash_mix_uint32(uint32 h, uint32 d);
 CAMLextern uint32 caml_hash_mix_intnat(uint32 h, intnat d);
 CAMLextern uint32 caml_hash_mix_int64(uint32 h, int64 d);
-CAMLextern uint32 caml_hash_mix_double(uint32 h, double d);
+CAMLextern uint32 caml_hash_mix_double(uint32 h, __double d);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 CAMLextern uint32 caml_hash_mix_float(uint32 h, float d);
+#endif
 CAMLextern uint32 caml_hash_mix_string(uint32 h, value s);
 
 

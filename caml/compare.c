@@ -170,17 +170,19 @@ static intnat compare_val(value v1, value v2, int total)
       break;
     }
     case Double_tag: {
-      double d1 = Double_val(v1);
-      double d2 = Double_val(v2);
+      __double d1 = Double_val(v1);
+      __double d2 = Double_val(v2);
       if (d1 < d2) return LESS;
       if (d1 > d2) return GREATER;
       if (d1 != d2) {
         if (! total) return UNORDERED;
+#if 0
         /* One or both of d1 and d2 is NaN.  Order according to the
            convention NaN = NaN and NaN < f for all other floats f. */
         if (d1 == d1) return GREATER; /* d1 is not NaN, d2 is NaN */
         if (d2 == d2) return LESS;    /* d2 is not NaN, d1 is NaN */
         /* d1 and d2 are both NaN, thus equal: continue comparison */
+#endif
       }
       break;
     }
@@ -190,15 +192,17 @@ static intnat compare_val(value v1, value v2, int total)
       mlsize_t i;
       if (sz1 != sz2) return sz1 - sz2;
       for (i = 0; i < sz1; i++) {
-        double d1 = Double_field(v1, i);
-        double d2 = Double_field(v2, i);
+        __double d1 = Double_field(v1, i);
+        __double d2 = Double_field(v2, i);
         if (d1 < d2) return LESS;
         if (d1 > d2) return GREATER;
         if (d1 != d2) {
           if (! total) return UNORDERED;
+#if 0
           /* See comment for Double_tag case */
           if (d1 == d1) return GREATER;
           if (d2 == d2) return LESS;
+#endif
         }
       }
       break;

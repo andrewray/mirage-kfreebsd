@@ -36,7 +36,9 @@
 #ifdef HAS_DIRENT
 #include <dirent.h>
 #else
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 #include <sys/dir.h>
+#endif /* __FreeBSD__ && _KERNEL */
 #endif
 #include "memory.h"
 #include "misc.h"
@@ -280,6 +282,9 @@ char * caml_dlerror(void)
 
 int caml_read_directory(char * dirname, struct ext_table * contents)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  NOT_IMPLEMENTED(caml_read_directory);
+#else
   DIR * d;
 #ifdef HAS_DIRENT
   struct dirent * e;
@@ -300,6 +305,7 @@ int caml_read_directory(char * dirname, struct ext_table * contents)
   }
   closedir(d);
   return 0;
+#endif
 }
 
 /* Recover executable name from /proc/self/exe if possible */

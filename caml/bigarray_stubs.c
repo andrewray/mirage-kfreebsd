@@ -237,7 +237,7 @@ static long caml_ba_offset(struct caml_ba_array * b, intnat * index)
 
 /* Helper function to allocate a record of two double floats */
 
-static value copy_two_doubles(double d0, double d1)
+static value copy_two_doubles(__double d0, __double d1)
 {
   value res = caml_alloc_small(2 * Double_wosize, Double_array_tag);
   Store_double_field(res, 0, d0);
@@ -265,10 +265,12 @@ value caml_ba_get_N(value vb, value * vind, int nind)
   switch ((b->flags) & CAML_BA_KIND_MASK) {
   default:
     Assert(0);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_FLOAT32:
     return caml_copy_double(((float *) b->data)[offset]);
+#endif
   case CAML_BA_FLOAT64:
-    return caml_copy_double(((double *) b->data)[offset]);
+    return caml_copy_double(((__double *) b->data)[offset]);
   case CAML_BA_SINT8:
     return Val_int(((int8 *) b->data)[offset]);
   case CAML_BA_UINT8:
@@ -285,11 +287,13 @@ value caml_ba_get_N(value vb, value * vind, int nind)
     return caml_copy_nativeint(((intnat *) b->data)[offset]);
   case CAML_BA_CAML_INT:
     return Val_long(((intnat *) b->data)[offset]);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_COMPLEX32:
     { float * p = ((float *) b->data) + offset * 2;
       return copy_two_doubles(p[0], p[1]); }
+#endif
   case CAML_BA_COMPLEX64:
-    { double * p = ((double *) b->data) + offset * 2;
+    { __double * p = ((__double *) b->data) + offset * 2;
       return copy_two_doubles(p[0], p[1]); }
   }
 }
@@ -435,10 +439,12 @@ static value caml_ba_set_aux(value vb, value * vind, intnat nind, value newval)
   switch (b->flags & CAML_BA_KIND_MASK) {
   default:
     Assert(0);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_FLOAT32:
     ((float *) b->data)[offset] = Double_val(newval); break;
+#endif
   case CAML_BA_FLOAT64:
-    ((double *) b->data)[offset] = Double_val(newval); break;
+    ((__double *) b->data)[offset] = Double_val(newval); break;
   case CAML_BA_SINT8:
   case CAML_BA_UINT8:
     ((int8 *) b->data)[offset] = Int_val(newval); break;
@@ -453,13 +459,15 @@ static value caml_ba_set_aux(value vb, value * vind, intnat nind, value newval)
     ((intnat *) b->data)[offset] = Nativeint_val(newval); break;
   case CAML_BA_CAML_INT:
     ((intnat *) b->data)[offset] = Long_val(newval); break;
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_COMPLEX32:
     { float * p = ((float *) b->data) + offset * 2;
       p[0] = Double_field(newval, 0);
       p[1] = Double_field(newval, 1);
       break; }
+#endif
   case CAML_BA_COMPLEX64:
-    { double * p = ((double *) b->data) + offset * 2;
+    { __double * p = ((__double *) b->data) + offset * 2;
       p[0] = Double_field(newval, 0);
       p[1] = Double_field(newval, 1);
       break; }
@@ -741,14 +749,16 @@ static int caml_ba_compare(value v1, value v2)
   }
 
   switch (b1->flags & CAML_BA_KIND_MASK) {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_COMPLEX32:
     num_elts *= 2; /*fallthrough*/
   case CAML_BA_FLOAT32:
     DO_FLOAT_COMPARISON(float);
+#endif
   case CAML_BA_COMPLEX64:
     num_elts *= 2; /*fallthrough*/
   case CAML_BA_FLOAT64:
-    DO_FLOAT_COMPARISON(double);
+    DO_FLOAT_COMPARISON(__double);
   case CAML_BA_SINT8:
     DO_INTEGER_COMPARISON(int8);
   case CAML_BA_UINT8:
@@ -850,6 +860,7 @@ static intnat caml_ba_hash(value v)
     for (n = 0; n < num_elts; n++, p++) h = caml_hash_mix_int64(h, *p);
     break;
   }
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_COMPLEX32:
     num_elts *= 2;              /* fallthrough */
   case CAML_BA_FLOAT32:
@@ -859,11 +870,12 @@ static intnat caml_ba_hash(value v)
     for (n = 0; n < num_elts; n++, p++) h = caml_hash_mix_float(h, *p);
     break;
   }
+#endif
   case CAML_BA_COMPLEX64:
     num_elts *= 2;              /* fallthrough */
   case CAML_BA_FLOAT64:
   {
-    double * p = b->data;
+    __double * p = b->data;
     if (num_elts > 32) num_elts = 32;
     for (n = 0; n < num_elts; n++, p++) h = caml_hash_mix_double(h, *p);
     break;
@@ -1161,15 +1173,17 @@ CAMLprim value caml_ba_fill(value vb, value vinit)
   switch (b->flags & CAML_BA_KIND_MASK) {
   default:
     Assert(0);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_FLOAT32: {
     float init = Double_val(vinit);
     float * p;
     for (p = b->data; num_elts > 0; p++, num_elts--) *p = init;
     break;
   }
+#endif
   case CAML_BA_FLOAT64: {
-    double init = Double_val(vinit);
-    double * p;
+    __double init = Double_val(vinit);
+    __double * p;
     for (p = b->data; num_elts > 0; p++, num_elts--) *p = init;
     break;
   }
@@ -1211,6 +1225,7 @@ CAMLprim value caml_ba_fill(value vb, value vinit)
     for (p = b->data; num_elts > 0; p++, num_elts--) *p = init;
     break;
   }
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   case CAML_BA_COMPLEX32: {
     float init0 = Double_field(vinit, 0);
     float init1 = Double_field(vinit, 1);
@@ -1218,10 +1233,11 @@ CAMLprim value caml_ba_fill(value vb, value vinit)
     for (p = b->data; num_elts > 0; num_elts--) { *p++ = init0; *p++ = init1; }
     break;
   }
+#endif
   case CAML_BA_COMPLEX64: {
-    double init0 = Double_field(vinit, 0);
-    double init1 = Double_field(vinit, 1);
-    double * p;
+    __double init0 = Double_field(vinit, 0);
+    __double init1 = Double_field(vinit, 1);
+    __double * p;
     for (p = b->data; num_elts > 0; num_elts--) { *p++ = init0; *p++ = init1; }
     break;
   }

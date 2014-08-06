@@ -114,6 +114,9 @@ static char * token_name(char * names, int number)
 static void print_token(struct parser_tables *tables, int state, value tok)
 {
   value v;
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  char buf[16];
+#endif
 
   if (Is_long(tok)) {
     fprintf(stderr, "State %d: read token %s\n",
@@ -127,7 +130,14 @@ static void print_token(struct parser_tables *tables, int state, value tok)
     else if (Tag_val(v) == String_tag)
       fprintf(stderr, "%s", String_val(v));
     else if (Tag_val(v) == Double_tag)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+    {
+      fixpt_to_str(Double_val(v), buf, 7);
+      fprintf(stderr, "%s", buf);
+    }
+#else
       fprintf(stderr, "%g", Double_val(v));
+#endif
     else
       fprintf(stderr, "_");
     fprintf(stderr, ")\n");

@@ -449,10 +449,10 @@ static void extern_rec(value v)
       break;
     }
     case Double_tag: {
-      if (sizeof(double) != 8)
+      if (sizeof(__double) != 8)
         extern_invalid_argument("output_value: non-standard floats");
       Write(CODE_DOUBLE_NATIVE);
-      writeblock_float8((double *) v, 1);
+      writeblock_float8((__double *) v, 1);
       size_32 += 1 + 2;
       size_64 += 1 + 1;
       extern_record_location(v);
@@ -460,7 +460,7 @@ static void extern_rec(value v)
     }
     case Double_array_tag: {
       mlsize_t nfloats;
-      if (sizeof(double) != 8)
+      if (sizeof(__double) != 8)
         extern_invalid_argument("output_value: non-standard floats");
       nfloats = Wosize_val(v) / Double_wosize;
       if (nfloats < 0x100) {
@@ -473,7 +473,7 @@ static void extern_rec(value v)
 #endif
         writecode32(CODE_DOUBLE_ARRAY32_NATIVE, nfloats);
       }
-      writeblock_float8((double *) v, nfloats);
+      writeblock_float8((__double *) v, nfloats);
       size_32 += 1 + nfloats * 2;
       size_64 += 1 + nfloats;
       extern_record_location(v);
@@ -740,7 +740,7 @@ CAMLexport void caml_serialize_float_4(float f)
   caml_serialize_block_4(&f, 1);
 }
 
-CAMLexport void caml_serialize_float_8(double f)
+CAMLexport void caml_serialize_float_8(__double f)
 {
   caml_serialize_block_float_8(&f, 1);
 }

@@ -32,9 +32,15 @@
 extern uintnat caml_max_stack_size;    /* defined in stacks.c */
 #endif
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+fixpt  caml_stat_minor_words    = 0,
+       caml_stat_promoted_words = 0,
+       caml_stat_major_words    = 0;
+#else
 double caml_stat_minor_words = 0.0,
        caml_stat_promoted_words = 0.0,
        caml_stat_major_words = 0.0;
+#endif
 
 intnat caml_stat_minor_collections = 0,
        caml_stat_major_collections = 0,
@@ -213,10 +219,18 @@ static value heap_stats (int returnstats)
     CAMLlocal1 (res);
 
     /* get a copy of these before allocating anything... */
+#if defined(__FreeBSD__) && defined(_KERNEL)
+    fixpt minwords = fixpt_add(caml_stat_minor_words,
+        fixpt_from_int(Wsize_bsize(caml_young_end - caml_young_ptr)));
+    fixpt prowords = caml_stat_promoted_words;
+    fixpt majwords = fixpt_add(caml_stat_major_words,
+        fixpt_from_int(caml_allocated_words));
+#else
     double minwords = caml_stat_minor_words
                       + (double) Wsize_bsize (caml_young_end - caml_young_ptr);
     double prowords = caml_stat_promoted_words;
     double majwords = caml_stat_major_words + (double) caml_allocated_words;
+#endif
     intnat mincoll = caml_stat_minor_collections;
     intnat majcoll = caml_stat_major_collections;
     intnat heap_words = Wsize_bsize (caml_stat_heap_size);
@@ -265,10 +279,18 @@ CAMLprim value caml_gc_quick_stat(value v)
   CAMLlocal1 (res);
 
   /* get a copy of these before allocating anything... */
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  fixpt minwords = fixpt_add(caml_stat_minor_words,
+      fixpt_from_int(Wsize_bsize (caml_young_end - caml_young_ptr)));
+  fixpt prowords = caml_stat_promoted_words;
+  fixpt majwords = fixpt_add(caml_stat_major_words,
+      fixpt_from_int(caml_allocated_words));
+#else
   double minwords = caml_stat_minor_words
                     + (double) Wsize_bsize (caml_young_end - caml_young_ptr);
   double prowords = caml_stat_promoted_words;
   double majwords = caml_stat_major_words + (double) caml_allocated_words;
+#endif
   intnat mincoll = caml_stat_minor_collections;
   intnat majcoll = caml_stat_major_collections;
   intnat heap_words = caml_stat_heap_size / sizeof (value);
@@ -302,10 +324,18 @@ CAMLprim value caml_gc_counters(value v)
   CAMLlocal1 (res);
 
   /* get a copy of these before allocating anything... */
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  fixpt minwords = fixpt_add(caml_stat_minor_words,
+      fixpt_from_int(Wsize_bsize (caml_young_end - caml_young_ptr)));
+  fixpt prowords = caml_stat_promoted_words;
+  fixpt majwords = fixpt_add(caml_stat_major_words,
+      fixpt_from_int(caml_allocated_words));
+#else
   double minwords = caml_stat_minor_words
                     + (double) Wsize_bsize (caml_young_end - caml_young_ptr);
   double prowords = caml_stat_promoted_words;
   double majwords = caml_stat_major_words + (double) caml_allocated_words;
+#endif
 
   res = caml_alloc_tuple (3);
   Store_field (res, 0, caml_copy_double (minwords));
@@ -418,6 +448,20 @@ CAMLprim value caml_gc_minor(value v)
 
 static void test_and_compact (void)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  uintnat fp;
+
+  fp = 100 * caml_fl_cur_size
+       / (Wsize_bsize (caml_stat_heap_size) - caml_fl_cur_size);
+  if (fp > 999999) fp = 999999;
+  caml_gc_message (0x200, "Estimated overhead (lower bound) = %"
+                          ARCH_INTNAT_PRINTF_FORMAT "u%%\n",
+                   fp);
+  if (fp >= caml_percent_max && caml_stat_heap_chunks > 1){
+    caml_gc_message (0x200, "Automatic compaction triggered.\n", 0);
+    caml_compact_heap ();
+  }
+#else
   float fp;
 
   fp = 100.0 * caml_fl_cur_size
@@ -430,6 +474,7 @@ static void test_and_compact (void)
     caml_gc_message (0x200, "Automatic compaction triggered.\n", 0);
     caml_compact_heap ();
   }
+#endif
 }
 
 CAMLprim value caml_gc_major(value v)

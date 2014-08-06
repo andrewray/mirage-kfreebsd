@@ -43,7 +43,7 @@ CAMLprim value caml_array_get_addr(value array, value index)
 CAMLprim value caml_array_get_float(value array, value index)
 {
   intnat idx = Long_val(index);
-  double d;
+  __double d;
   value res;
 
   if (idx < 0 || idx >= Wosize_val(array) / Double_wosize)
@@ -93,7 +93,7 @@ CAMLprim value caml_array_set(value array, value index, value newval)
 
 CAMLprim value caml_array_unsafe_get_float(value array, value index)
 {
-  double d;
+  __double d;
   value res;
 
   d = Double_field(array, Long_val(index));
@@ -140,7 +140,7 @@ CAMLprim value caml_make_vect(value len, value init)
   CAMLparam2 (len, init);
   CAMLlocal1 (res);
   mlsize_t size, wsize, i;
-  double d;
+  __double d;
 
   size = Long_val(len);
   if (size == 0) {
@@ -216,9 +216,9 @@ CAMLprim value caml_array_blit(value a1, value ofs1, value a2, value ofs2,
     /* Arrays of floats.  The values being copied are floats, not
        pointer, so we can do a direct copy.  memmove takes care of
        potential overlap between the copied areas. */
-    memmove((double *)a2 + Long_val(ofs2),
-            (double *)a1 + Long_val(ofs1),
-            Long_val(n) * sizeof(double));
+    memmove((__double *)a2 + Long_val(ofs2),
+            (__double *)a1 + Long_val(ofs1),
+            Long_val(n) * sizeof(__double));
     return Val_unit;
   }
   if (Is_young(a2)) {
@@ -269,6 +269,7 @@ static value caml_array_gather(intnat num_arrays,
   mlsize_t i, size, wsize, count, pos;
   value * src;
 
+  res = 0;
   /* Determine total size and whether result array is an array of floats */
   size = 0;
   isfloat = 0;
@@ -286,9 +287,9 @@ static value caml_array_gather(intnat num_arrays,
     if (wsize > Max_wosize) caml_invalid_argument("Array.concat");
     res = caml_alloc(wsize, Double_array_tag);
     for (i = 0, pos = 0; i < num_arrays; i++) {
-      memcpy((double *)res + pos,
-             (double *)arrays[i] + offsets[i],
-             lengths[i] * sizeof(double));
+      memcpy((__double *)res + pos,
+             (__double *)arrays[i] + offsets[i],
+             lengths[i] * sizeof(__double));
       pos += lengths[i];
     }
     Assert(pos == size);

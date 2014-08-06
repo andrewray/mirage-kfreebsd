@@ -122,7 +122,7 @@ CAMLextern void caml_serialize_int_2(int i);
 CAMLextern void caml_serialize_int_4(int32 i);
 CAMLextern void caml_serialize_int_8(int64 i);
 CAMLextern void caml_serialize_float_4(float f);
-CAMLextern void caml_serialize_float_8(double f);
+CAMLextern void caml_serialize_float_8(__double f);
 CAMLextern void caml_serialize_block_1(void * data, intnat len);
 CAMLextern void caml_serialize_block_2(void * data, intnat len);
 CAMLextern void caml_serialize_block_4(void * data, intnat len);

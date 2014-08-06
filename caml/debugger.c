@@ -407,7 +407,7 @@ void caml_debugger(enum event_kind event)
         putch(dbg_out, 0);
         putval(dbg_out, Field(val, i));
       } else {
-        double d = Double_field(val, i);
+        __double d = Double_field(val, i);
         putch(dbg_out, 1);
         caml_really_putblock(dbg_out, (char *) &d, 8);
       }

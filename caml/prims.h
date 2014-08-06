@@ -16,7 +16,7 @@
 #ifndef CAML_PRIMS_H
 #define CAML_PRIMS_H
 
-typedef value (*c_primitive)();
+typedef value (*c_primitive)(void);
 
 extern c_primitive caml_builtin_cprim[];
 extern char * caml_names_of_builtin_cprim[];

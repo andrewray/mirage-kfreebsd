@@ -330,10 +330,18 @@ CAMLprim value caml_int32_to_int(value v)
 { return Val_long(Int32_val(v)); }
 
 CAMLprim value caml_int32_of_float(value v)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+{ return caml_copy_int32(fixpt_to_int(Double_val(v))); }
+#else
 { return caml_copy_int32((int32)(Double_val(v))); }
+#endif
 
 CAMLprim value caml_int32_to_float(value v)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+{ return caml_copy_double(fixpt_from_int(Int32_val(v))); }
+#else
 { return caml_copy_double((double)(Int32_val(v))); }
+#endif
 
 CAMLprim value caml_int32_compare(value v1, value v2)
 {
@@ -366,16 +374,26 @@ CAMLprim value caml_int32_of_string(value s)
 
 CAMLprim value caml_int32_bits_of_float(value vd)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  caml_invalid_argument("caml_int32_bits_of_float: not supported");
+  return 0;
+#else
   union { float d; int32 i; } u;
   u.d = Double_val(vd);
   return caml_copy_int32(u.i);
+#endif
 }
 
 CAMLprim value caml_int32_float_of_bits(value vi)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  caml_invalid_argument("caml_int32_float_of_bits: not supported");
+  return 0;
+#else
   union { float d; int32 i; } u;
   u.i = Int32_val(vi);
   return caml_copy_double(u.d);
+#endif
 }
 
 /* 64-bit integers */
@@ -540,12 +558,20 @@ CAMLprim value caml_int64_to_int(value v)
 { return Val_long(I64_to_intnat(Int64_val(v))); }
 
 CAMLprim value caml_int64_of_float(value v)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+{ return caml_copy_int64(fixpt_from_int(Double_val(v))); }
+#else
 { return caml_copy_int64(I64_of_double(Double_val(v))); }
+#endif
 
 CAMLprim value caml_int64_to_float(value v)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_from_int(Int64_val(v)));
+#else
   int64 i = Int64_val(v);
   return caml_copy_double(I64_to_double(i));
+#endif
 }
 
 CAMLprim value caml_int64_of_int32(value v)
@@ -628,7 +654,7 @@ CAMLprim value caml_int64_of_string(value s)
 
 CAMLprim value caml_int64_bits_of_float(value vd)
 {
-  union { double d; int64 i; int32 h[2]; } u;
+  union { __double d; int64 i; int32 h[2]; } u;
   u.d = Double_val(vd);
 #if defined(__arm__) && !defined(__ARM_EABI__)
   { int32 t = u.h[0]; u.h[0] = u.h[1]; u.h[1] = t; }
@@ -638,7 +664,7 @@ CAMLprim value caml_int64_bits_of_float(value vd)
 
 CAMLprim value caml_int64_float_of_bits(value vi)
 {
-  union { double d; int64 i; int32 h[2]; } u;
+  union { __double d; int64 i; int32 h[2]; } u;
   u.i = Int64_val(vi);
 #if defined(__arm__) && !defined(__ARM_EABI__)
   { int32 t = u.h[0]; u.h[0] = u.h[1]; u.h[1] = t; }
@@ -815,7 +841,7 @@ CAMLprim value caml_nativeint_of_float(value v)
 { return caml_copy_nativeint((intnat)(Double_val(v))); }
 
 CAMLprim value caml_nativeint_to_float(value v)
-{ return caml_copy_double((double)(Nativeint_val(v))); }
+{ return caml_copy_double((__double)(Nativeint_val(v))); }
 
 CAMLprim value caml_nativeint_of_int32(value v)
 { return caml_copy_nativeint(Int32_val(v)); }

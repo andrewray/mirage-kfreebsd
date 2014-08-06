@@ -34,21 +34,21 @@
 
 #ifdef ARCH_ALIGN_DOUBLE
 
-CAMLexport double caml_Double_val(value val)
+CAMLexport __double caml_Double_val(value val)
 {
-  union { value v[2]; double d; } buffer;
+  union { value v[2]; __double d; } buffer;
 
-  Assert(sizeof(double) == 2 * sizeof(value));
+  Assert(sizeof(__double) == 2 * sizeof(value));
   buffer.v[0] = Field(val, 0);
   buffer.v[1] = Field(val, 1);
   return buffer.d;
 }
 
-CAMLexport void caml_Store_double_val(value val, double dbl)
+CAMLexport void caml_Store_double_val(value val, __double dbl)
 {
-  union { value v[2]; double d; } buffer;
+  union { value v[2]; __double d; } buffer;
 
-  Assert(sizeof(double) == 2 * sizeof(value));
+  Assert(sizeof(__double) == 2 * sizeof(value));
   buffer.d = dbl;
   Field(val, 0) = buffer.v[0];
   Field(val, 1) = buffer.v[1];
@@ -56,7 +56,7 @@ CAMLexport void caml_Store_double_val(value val, double dbl)
 
 #endif
 
-CAMLexport value caml_copy_double(double d)
+CAMLexport value caml_copy_double(__double d)
 {
   value res;
 
@@ -81,7 +81,7 @@ CAMLprim value caml_format_float(value fmt, value arg)
   char * p;
   char * dest;
   value res;
-  double d = Double_val(arg);
+  __double d = Double_val(arg);
 
 #ifdef HAS_BROKEN_PRINTF
   if (isfinite(d)) {
@@ -106,7 +106,11 @@ CAMLprim value caml_format_float(value fmt, value arg)
   } else {
     dest = caml_stat_alloc(prec);
   }
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  fixpt_to_str(d, dest, (prec > MAX_DIGITS) ? prec - MAX_DIGITS : MAX_DIGITS);
+#else
   sprintf(dest, String_val(fmt), d);
+#endif
   res = caml_copy_string(dest);
   if (dest != format_buffer) {
     caml_stat_free(dest);
@@ -138,7 +142,7 @@ CAMLprim value caml_format_float(value fmt, value arg)
   char parse_buffer[64];
   char * buf, * src, * dst, * end;
   mlsize_t len, lenvs;
-  double d;
+  __double d;
   intnat flen = Long_val(l);
   intnat fidx = Long_val(idx);
 
@@ -155,13 +159,20 @@ CAMLprim value caml_format_float(value fmt, value arg)
   }
   *dst = 0;
   if (dst == buf) goto error;
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  d = fixpt_strtod((const char *) buf, (const char **) &end);
+#else
   d = strtod((const char *) buf, &end);
+#endif
   if (end != dst) goto error;
   if (buf != parse_buffer) caml_stat_free(buf);
   return caml_copy_double(d);
  error:
   if (buf != parse_buffer) caml_stat_free(buf);
   caml_failwith("float_of_string");
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return 0;
+#endif
 }
 
 CAMLprim value caml_float_of_string(value vs)
@@ -169,7 +180,7 @@ CAMLprim value caml_float_of_string(value vs)
   char parse_buffer[64];
   char * buf, * src, * dst, * end;
   mlsize_t len;
-  double d;
+  __double d;
 
   len = caml_string_length(vs);
   buf = len < sizeof(parse_buffer) ? parse_buffer : caml_stat_alloc(len + 1);
@@ -181,23 +192,38 @@ CAMLprim value caml_float_of_string(value vs)
   }
   *dst = 0;
   if (dst == buf) goto error;
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  d = fixpt_strtod((const char *) buf, (const char **) &end);
+#else
   d = strtod((const char *) buf, &end);
+#endif
   if (end != dst) goto error;
   if (buf != parse_buffer) caml_stat_free(buf);
   return caml_copy_double(d);
  error:
   if (buf != parse_buffer) caml_stat_free(buf);
   caml_failwith("float_of_string");
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return 0;
+#endif
 }
 
 CAMLprim value caml_int_of_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return Val_long((intnat) fixpt_to_int(Double_val(f)));
+#else
   return Val_long((intnat) Double_val(f));
+#endif
 }
 
 CAMLprim value caml_float_of_int(value n)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double((fixpt_from_int(Long_val(n))));
+#else
   return caml_copy_double((double) Long_val(n));
+#endif
 }
 
 CAMLprim value caml_neg_float(value f)
@@ -207,42 +233,74 @@ CAMLprim value caml_neg_float(value f)
 
 CAMLprim value caml_abs_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_abs(Double_val(f)));
+#else
   return caml_copy_double(fabs(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_add_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_add(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(Double_val(f) + Double_val(g));
+#endif
 }
 
 CAMLprim value caml_sub_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_sub(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(Double_val(f) - Double_val(g));
+#endif
 }
 
 CAMLprim value caml_mul_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_mul(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(Double_val(f) * Double_val(g));
+#endif
 }
 
 CAMLprim value caml_div_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_div(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(Double_val(f) / Double_val(g));
+#endif
 }
 
 CAMLprim value caml_exp_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_exp(Double_val(f)));
+#else
   return caml_copy_double(exp(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_floor_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_floor(Double_val(f)));
+#else
   return caml_copy_double(floor(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_fmod_float(value f1, value f2)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_mod(Double_val(f1), Double_val(f2)));
+#else
   return caml_copy_double(fmod(Double_val(f1), Double_val(f2)));
+#endif
 }
 
 CAMLprim value caml_frexp_float(value f)
@@ -251,7 +309,11 @@ CAMLprim value caml_frexp_float(value f)
   CAMLlocal2 (res, mantissa);
   int exponent;
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  mantissa = caml_copy_double(fixpt_frexp(Double_val(f), &exponent));
+#else
   mantissa = caml_copy_double(frexp (Double_val(f), &exponent));
+#endif
   res = caml_alloc_tuple(2);
   Field(res, 0) = mantissa;
   Field(res, 1) = Val_int(exponent);
@@ -260,28 +322,45 @@ CAMLprim value caml_frexp_float(value f)
 
 CAMLprim value caml_ldexp_float(value f, value i)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_ldexp(Double_val(f), Int_val(i)));
+#else
   return caml_copy_double(ldexp(Double_val(f), Int_val(i)));
+#endif
 }
 
 CAMLprim value caml_log_float(value f)
 {
-  return caml_copy_double(log_(Double_val(f)));
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_log(Double_val(f)));
+#else
+  return caml_copy_double(log(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_log10_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_log10(Double_val(f)));
+#else
   return caml_copy_double(log10(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_modf_float(value f)
 {
-  double frem;
+  __double frem;
 
   CAMLparam1 (f);
   CAMLlocal3 (res, quo, rem);
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  quo = caml_copy_double(fixpt_modf(Double_val(f), &frem));
+  rem = caml_copy_double(frem);
+#else
   quo = caml_copy_double(modf (Double_val(f), &frem));
   rem = caml_copy_double(frem);
+#endif
   res = caml_alloc_tuple(2);
   Field(res, 0) = quo;
   Field(res, 1) = rem;
@@ -290,69 +369,122 @@ CAMLprim value caml_modf_float(value f)
 
 CAMLprim value caml_sqrt_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_sqrt(Double_val(f)));
+#else
   return caml_copy_double(sqrt(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_power_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_pow(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(pow(Double_val(f), Double_val(g)));
+#endif
 }
 
 CAMLprim value caml_sin_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_sin(Double_val(f)));
+#else
   return caml_copy_double(sin(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_sinh_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_sinh(Double_val(f)));
+#else
   return caml_copy_double(sinh(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_cos_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_cos(Double_val(f)));
+#else
   return caml_copy_double(cos(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_cosh_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_cosh(Double_val(f)));
+#else
   return caml_copy_double(cosh(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_tan_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_tan(Double_val(f)));
+#else
   return caml_copy_double(tan(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_tanh_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_tanh(Double_val(f)));
+#else
   return caml_copy_double(tanh(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_asin_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_asin(Double_val(f)));
+#else
   return caml_copy_double(asin(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_acos_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_acos(Double_val(f)));
+#else
   return caml_copy_double(acos(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_atan_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_atan(Double_val(f)));
+#else
   return caml_copy_double(atan(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_atan2_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_atan2(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(atan2(Double_val(f), Double_val(g)));
+#endif
 }
 
 CAMLprim value caml_ceil_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_ceil(Double_val(f)));
+#else
   return caml_copy_double(ceil(Double_val(f)));
+#endif
 }
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 CAMLexport double caml_hypot(double x, double y)
 {
 #ifdef HAS_C99_FLOAT_OPS
@@ -368,12 +500,18 @@ CAMLexport double caml_hypot(double x, double y)
   return x * sqrt(1.0 + ratio * ratio);
 #endif
 }
+#endif /* __FreeBSD__ && _KERNEL */
 
 CAMLprim value caml_hypot_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_hypot(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(caml_hypot(Double_val(f), Double_val(g)));
+#endif
 }
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 /* These emulations of expm1() and log1p() are due to William Kahan.
    See http://www.plunk.org/~hatch/rightway.php */
 CAMLexport double caml_expm1(double x)
@@ -386,7 +524,7 @@ CAMLexport double caml_expm1(double x)
     return x;
   if (u - 1. == -1.)
     return -1.;
-  return (u - 1.) * x / log_(u);
+  return (u - 1.) * x / log(u);
 #endif
 }
 
@@ -399,18 +537,27 @@ CAMLexport double caml_log1p(double x)
   if (u == 1.)
     return x;
   else
-    return log_(u) * x / (u - 1.);
+    return log(u) * x / (u - 1.);
 #endif
 }
+#endif /* __FreeBSD__ && _KERNEL */
 
 CAMLprim value caml_expm1_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_expm1(Double_val(f)));
+#else
   return caml_copy_double(caml_expm1(Double_val(f)));
+#endif
 }
 
 CAMLprim value caml_log1p_float(value f)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_log1p(Double_val(f)));
+#else
   return caml_copy_double(caml_log1p(Double_val(f)));
+#endif
 }
 
 union double_as_two_int32 {
@@ -422,6 +569,7 @@ union double_as_two_int32 {
 #endif
 };
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 CAMLexport double caml_copysign(double x, double y)
 {
 #ifdef HAS_C99_FLOAT_OPS
@@ -435,53 +583,84 @@ CAMLexport double caml_copysign(double x, double y)
   return ux.d;
 #endif
 }
+#endif /* __FreeBSD__ && _KERNEL */
 
 CAMLprim value caml_copysign_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return caml_copy_double(fixpt_copysign(Double_val(f), Double_val(g)));
+#else
   return caml_copy_double(caml_copysign(Double_val(f), Double_val(g)));
+#endif
 }
 
 CAMLprim value caml_eq_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
   return Val_bool(Double_val(f) == Double_val(g));
+#else
+  return Val_bool(Double_val(f) == Double_val(g));
+#endif
 }
 
 CAMLprim value caml_neq_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
   return Val_bool(Double_val(f) != Double_val(g));
+#else
+  return Val_bool(Double_val(f) != Double_val(g));
+#endif
 }
 
 CAMLprim value caml_le_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
   return Val_bool(Double_val(f) <= Double_val(g));
+#else
+  return Val_bool(Double_val(f) <= Double_val(g));
+#endif
 }
 
 CAMLprim value caml_lt_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  return Val_bool(Double_val(f) <= Double_val(g));
+#else
   return Val_bool(Double_val(f) < Double_val(g));
+#endif
 }
 
 CAMLprim value caml_ge_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
   return Val_bool(Double_val(f) >= Double_val(g));
+#else
+  return Val_bool(Double_val(f) >= Double_val(g));
+#endif
 }
 
 CAMLprim value caml_gt_float(value f, value g)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
   return Val_bool(Double_val(f) > Double_val(g));
+#else
+  return Val_bool(Double_val(f) > Double_val(g));
+#endif
 }
 
 CAMLprim value caml_float_compare(value vf, value vg)
 {
-  double f = Double_val(vf);
-  double g = Double_val(vg);
+  __double f = Double_val(vf);
+  __double g = Double_val(vg);
   if (f == g) return Val_int(0);
   if (f < g) return Val_int(-1);
   if (f > g) return Val_int(1);
   /* One or both of f and g is NaN.  Order according to the
      convention NaN = NaN and NaN < x for all other floats x. */
+#if 0
   if (f == f) return Val_int(1);  /* f is not NaN, g is NaN */
   if (g == g) return Val_int(-1); /* g is not NaN, f is NaN */
+#endif
   return Val_int(0);              /* both f and g are NaN */
 }
 
@@ -503,6 +682,13 @@ CAMLprim value caml_classify_float(value vd)
   default: /* case FP_NORMAL */
     return Val_int(FP_normal);
   }
+#elif defined(__FreeBSD__) && defined(_KERNEL)
+  __double d;
+
+  d = Double_val(vd);
+  if (d == 0)
+    return Val_int(FP_zero);
+  return Val_int(FP_normal);
 #else
   union double_as_two_int32 u;
   uint32 h, l;
@@ -540,7 +726,7 @@ CAMLprim value caml_classify_float(value vd)
 
 void caml_init_ieee_floats(void)
 {
-#if defined(__FreeBSD__) && (__FreeBSD_version < 400017)
+#if defined(__FreeBSD__) && (__FreeBSD_version < 400017) && !defined(_KERNEL)
   fpsetmask(0);
 #endif
 }

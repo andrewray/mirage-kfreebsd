@@ -61,7 +61,7 @@ CAMLexport struct channel * caml_open_descriptor_in(int fd)
   channel = (struct channel *) caml_stat_alloc(sizeof(struct channel));
   channel->fd = fd;
   caml_enter_blocking_section();
-  channel->offset = lseek(fd, 0, SEEK_CUR);
+  channel->offset = 0;
   caml_leave_blocking_section();
   channel->curr = channel->max = channel->buff;
   channel->end = channel->buff + IO_BUFFER_SIZE;
@@ -102,7 +102,6 @@ static void unlink_channel(struct channel *channel)
 
 CAMLexport void caml_close_channel(struct channel *channel)
 {
-  close(channel->fd);
   if (channel->refcount > 0) return;
   if (caml_channel_mutex_free != NULL) (*caml_channel_mutex_free)(channel);
   unlink_channel(channel);
@@ -120,11 +119,8 @@ CAMLexport file_offset caml_channel_size(struct channel *channel)
   fd = channel->fd;
   offset = channel->offset;
   caml_enter_blocking_section();
-  end = lseek(fd, 0, SEEK_END);
-  if (end == -1 || lseek(fd, offset, SEEK_SET) != offset) {
-    caml_leave_blocking_section();
-    caml_sys_error(NO_ARG);
-  }
+  end = 0;
+  caml_sys_error(NO_ARG);
   caml_leave_blocking_section();
   return end;
 }
@@ -152,27 +148,18 @@ CAMLexport int caml_channel_binary_mode(struct channel *channel)
 #define EWOULDBLOCK (-1)
 #endif
 
+#if defined(__FreeBSD__) && defined(_KERNEL)
+void
+console_printf(const char *data, unsigned int length)
+{
+  printf("%.*s", length, data);
+}
+#endif
+
 static int do_write(int fd, char *p, int n)
 {
-  int retcode;
-
-again:
-  caml_enter_blocking_section();
-  retcode = write(fd, p, n);
-  caml_leave_blocking_section();
-  if (retcode == -1) {
-    if (errno == EINTR) goto again;
-    if ((errno == EAGAIN || errno == EWOULDBLOCK) && n > 1) {
-      /* We couldn't do a partial write here, probably because
-         n <= PIPE_BUF and POSIX says that writes of less than
-         PIPE_BUF characters must be atomic.
-         We first try again with a partial write of 1 character.
-         If that fails too, we'll raise Sys_blocked_io below. */
-      n = 1; goto again;
-    }
-  }
-  if (retcode == -1) caml_sys_io_error(NO_ARG);
-  return retcode;
+  console_printf(p, n);
+  return n;
 }
 
 /* Attempt to flush the buffer. This will make room in the buffer for
@@ -253,11 +240,7 @@ CAMLexport void caml_really_putblock(struct channel *channel,
 CAMLexport void caml_seek_out(struct channel *channel, file_offset dest)
 {
   caml_flush(channel);
-  caml_enter_blocking_section();
-  if (lseek(channel->fd, dest, SEEK_SET) != dest) {
-    caml_leave_blocking_section();
-    caml_sys_error(NO_ARG);
-  }
+  caml_sys_error(NO_ARG);
   caml_leave_blocking_section();
   channel->offset = dest;
 }
@@ -276,12 +259,8 @@ CAMLexport int caml_do_read(int fd, char *p, unsigned int n)
 
   do {
     caml_enter_blocking_section();
-    retcode = read(fd, p, n);
-#if defined(_WIN32)
-    if (retcode == -1 && errno == ENOMEM && n > 16384){
-      retcode = read(fd, p, 16384);
-    }
-#endif
+    retcode = -1;
+    errno = EIO;
     caml_leave_blocking_section();
   } while (retcode == -1 && errno == EINTR);
   if (retcode == -1) caml_sys_io_error(NO_ARG);
@@ -358,11 +337,7 @@ CAMLexport void caml_seek_in(struct channel *channel, file_offset dest)
       dest <= channel->offset) {
     channel->curr = channel->max - (channel->offset - dest);
   } else {
-    caml_enter_blocking_section();
-    if (lseek(channel->fd, dest, SEEK_SET) != dest) {
-      caml_leave_blocking_section();
-      caml_sys_error(NO_ARG);
-    }
+    caml_sys_error(NO_ARG);
     caml_leave_blocking_section();
     channel->offset = dest;
     channel->curr = channel->max = channel->buff;
@@ -502,7 +477,7 @@ CAMLprim value caml_channel_descriptor(value vchannel)
 
 CAMLprim value caml_ml_close_channel(value vchannel)
 {
-  int result;
+  int result=0;
   int do_syscall;
   int fd;
 
@@ -520,12 +495,6 @@ CAMLprim value caml_ml_close_channel(value vchannel)
      immediate caml_flush_partial or caml_refill, thus raising a Sys_error
      exception */
   channel->curr = channel->max = channel->end;
-
-  if (do_syscall) {
-    caml_enter_blocking_section();
-    result = close(fd);
-    caml_leave_blocking_section();
-  }
 
   if (result == -1) caml_sys_error (NO_ARG);
   return Val_unit;
@@ -806,3 +775,21 @@ CAMLexport file_offset caml_File_offset_val(value v)
   return (file_offset) ofs.l;
 }
 #endif
+
+void
+caml_close_all_channels(void)
+{
+  struct channel * ch, *p;
+
+  ch = p = caml_all_opened_channels;
+  while (ch != NULL) {
+    p = ch;
+    ch = ch->prev;
+  }
+  ch = p;
+  while (ch != NULL) {
+    p = ch->next;
+    caml_stat_free(ch);
+    ch = p;
+  }
+}

@@ -7,6 +7,7 @@ INCLUDES = \
 	-Istdinc \
 	-Icaml \
 	-Icaml/$(PLATFORM) \
+	-Ifixpt \
 	-I$(KERNELSRC) \
 	-I$(KERNELSRC)/contrib/altq
 
@@ -72,8 +73,8 @@ CLAGS = \
 
 .SUFFIXES: .c .o
 
-#SRC != ls caml/*.c
-
+#caml/natdynlink.c 
+#caml/unix.c 
 SRC = \
 	caml/alloc.c \
 	caml/array.c \
@@ -104,7 +105,6 @@ SRC = \
 	caml/meta.c \
 	caml/minor_gc.c \
 	caml/misc.c \
-	caml/natdynlink.c \
 	caml/obj.c \
 	caml/parsing.c \
 	caml/printexc.c \
@@ -116,7 +116,6 @@ SRC = \
 	caml/str.c \
 	caml/strstubs.c \
 	caml/sys.c \
-	caml/unix.c \
 	caml/weak.c
 
 

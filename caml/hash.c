@@ -90,10 +90,10 @@ CAMLexport uint32 caml_hash_mix_int64(uint32 h, int64 d)
    Treats all NaNs identically.
 */
 
-CAMLexport uint32 caml_hash_mix_double(uint32 hash, double d)
+CAMLexport uint32 caml_hash_mix_double(uint32 hash, __double d)
 {
   union {
-    double d;
+    __double d;
 #if defined(ARCH_BIG_ENDIAN) || (defined(__arm__) && !defined(__ARM_EABI__))
     struct { uint32 h; uint32 l; } i;
 #else
@@ -118,6 +118,7 @@ CAMLexport uint32 caml_hash_mix_double(uint32 hash, double d)
   return hash;
 }
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 /* Mix a single-precision float.
    Treats +0.0 and -0.0 identically.
    Treats all NaNs identically.
@@ -143,6 +144,7 @@ CAMLexport uint32 caml_hash_mix_float(uint32 hash, float d)
   MIX(hash, n);
   return hash;
 }
+#endif
 
 /* Mix an OCaml string */
 
@@ -330,11 +332,11 @@ static void hash_aux(value obj)
          The results are consistent among all platforms with IEEE floats. */
       hash_univ_count--;
 #ifdef ARCH_BIG_ENDIAN
-      for (p = &Byte_u(obj, sizeof(double) - 1), i = sizeof(double);
+      for (p = &Byte_u(obj, sizeof(__double) - 1), i = sizeof(__double);
            i > 0;
            p--, i--)
 #else
-      for (p = &Byte_u(obj, 0), i = sizeof(double);
+      for (p = &Byte_u(obj, 0), i = sizeof(__double);
            i > 0;
            p++, i--)
 #endif
@@ -342,13 +344,13 @@ static void hash_aux(value obj)
       break;
     case Double_array_tag:
       hash_univ_count--;
-      for (j = 0; j < Bosize_val(obj); j += sizeof(double)) {
+      for (j = 0; j < Bosize_val(obj); j += sizeof(__double)) {
 #ifdef ARCH_BIG_ENDIAN
-      for (p = &Byte_u(obj, j + sizeof(double) - 1), i = sizeof(double);
+      for (p = &Byte_u(obj, j + sizeof(__double) - 1), i = sizeof(__double);
            i > 0;
            p--, i--)
 #else
-      for (p = &Byte_u(obj, j), i = sizeof(double);
+      for (p = &Byte_u(obj, j), i = sizeof(__double);
            i > 0;
            p++, i--)
 #endif

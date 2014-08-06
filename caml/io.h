@@ -121,4 +121,6 @@ CAMLextern file_offset caml_File_offset_val(value v);
 #define File_offset_val caml_File_offset_val
 #endif
 
+void caml_close_all_channels(void);
+
 #endif /* CAML_IO_H */
