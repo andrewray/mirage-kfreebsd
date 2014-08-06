@@ -265,7 +265,7 @@ CAMLprim value caml_ldexp_float(value f, value i)
 
 CAMLprim value caml_log_float(value f)
 {
-  return caml_copy_double(log(Double_val(f)));
+  return caml_copy_double(log_(Double_val(f)));
 }
 
 CAMLprim value caml_log10_float(value f)
@@ -386,7 +386,7 @@ CAMLexport double caml_expm1(double x)
     return x;
   if (u - 1. == -1.)
     return -1.;
-  return (u - 1.) * x / log(u);
+  return (u - 1.) * x / log_(u);
 #endif
 }
 
@@ -399,7 +399,7 @@ CAMLexport double caml_log1p(double x)
   if (u == 1.)
     return x;
   else
-    return log(u) * x / (u - 1.);
+    return log_(u) * x / (u - 1.);
 #endif
 }
 

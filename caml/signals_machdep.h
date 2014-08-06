@@ -16,7 +16,14 @@
 #ifndef CAML_SIGNALS_MACHDEP_H
 #define CAML_SIGNALS_MACHDEP_H
 
-#if defined(__GNUC__) && defined(__i386__)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+
+#define Read_and_clear(dst,src) \
+  __asm__("xorq %0, %0; xchgq %0, %1" \
+      : "=r" (dst), "=m" (src) \
+      : "m" (src))
+
+#elif defined(__GNUC__) && defined(__i386__)
 
 #define Read_and_clear(dst,src) \
   asm("xorl %0, %0; xchgl %0, %1" \

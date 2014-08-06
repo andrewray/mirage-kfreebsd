@@ -18,6 +18,15 @@
 #include <memory.h>
 #include <fail.h>
 
+#define alloc caml_alloc
+#define failwith caml_failwith
+#define invalid_argument caml_invalid_argument
+#define alloc_string caml_alloc_string
+#define string_length caml_string_length
+#define stat_alloc caml_stat_alloc
+#define stat_free caml_stat_free
+#define stat_resize caml_stat_resize
+
 /* The backtracking NFA interpreter */
 
 union backtrack_point {
