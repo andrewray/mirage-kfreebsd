@@ -118,6 +118,7 @@ SRC = \
 	caml/sys.c \
 	caml/weak.c
 
+SRC += fixpt/fixmath.c
 
 OBJ = ${SRC:.c=.o}
 
@@ -135,9 +136,10 @@ links: machine x86
 	cc $(CLAGS) -o ${.TARGET} -c ${.IMPSRC}
 
 libmir.a: $(OBJ)
-	echo libmir.a
+	ar rc libmir.a $(OBJ)
 
 clean:
-	rm -f x86 machine
+	rm -f x86 machine libmir.a
 	rm -f $(OBJ)
+	find . -name "*~" | xargs rm -f
 
