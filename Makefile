@@ -129,7 +129,9 @@ SRC += fixpt/fixmath.c
 SRC_ = ${SRC:.c=.o}
 OBJ  = ${SRC_:.S=.o}
 
-all: links libmir.a
+.PHONY: ocaml_lib clean test
+
+all: links libmir.a ocaml_lib test
 
 machine:
 	ln -s $(KERNELSRC)/$(PLATFORM)/include ${.TARGET}
@@ -148,8 +150,22 @@ links: machine x86
 libmir.a: $(OBJ)
 	ar rc libmir.a $(OBJ)
 
+ocaml_lib:
+	(cd lib; make)
+
 clean:
+	(cd lib; make clean)
+	(cd test; make clean)
 	rm -f x86 machine libmir.a
 	rm -f $(OBJ)
 	find . -name "*~" | xargs rm -f
+
+test:
+	(cd test; make)
+
+load:
+	sudo kldload test/main.ko
+
+unload:
+	sudo kldunload test/main.ko
 
