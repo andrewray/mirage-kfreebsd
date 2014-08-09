@@ -1,0 +1,2 @@
+<*.ml>: syntax(camlp4o), package(lwt,lwt.syntax,ipaddr,cstruct), for-pack(OS)
+<*.mli>: syntax(camlp4o), package(lwt,lwt.syntax,ipaddr,cstruct)
