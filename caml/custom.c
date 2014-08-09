@@ -47,7 +47,11 @@ struct custom_operations_list {
 
 static struct custom_operations_list * custom_ops_table = NULL;
 
+#ifdef MEM_DEBUG
+CAMLexport void caml_register_custom_operations_(struct custom_operations * ops, char *file, int line)
+#else
 CAMLexport void caml_register_custom_operations(struct custom_operations * ops)
+#endif
 {
   struct custom_operations_list * l =
     caml_stat_alloc(sizeof(struct custom_operations_list));
@@ -56,6 +60,9 @@ CAMLexport void caml_register_custom_operations(struct custom_operations * ops)
   l->ops = ops;
   l->next = custom_ops_table;
   custom_ops_table = l;
+#ifdef MEM_DEBUG
+  printf("caml_register_custom_operations: %s:%d\n", file, line);
+#endif
 }
 
 struct custom_operations * caml_find_custom_operations(char * ident)
@@ -101,13 +108,13 @@ void caml_init_custom_operations(void)
 }
 
 static void
-free_custom_operations_list(struct custom_operations_list *p) {
+free_custom_operations_list(struct custom_operations_list *p, int final) {
   struct custom_operations_list *q;
 
   while (p != NULL) {
     q = p->next;
 
-    if (p->ops != NULL && p->ops->finalize != NULL)
+    if (final && p->ops != NULL && p->ops->finalize != NULL)
       p->ops->finalize((value) p->ops);
 
     caml_stat_free(p);
@@ -117,6 +124,6 @@ free_custom_operations_list(struct custom_operations_list *p) {
 
 void caml_deinit_custom_operations(void)
 {
-  free_custom_operations_list(custom_ops_table);
-  free_custom_operations_list(custom_ops_final_table);
+  free_custom_operations_list(custom_ops_table, 0);
+  free_custom_operations_list(custom_ops_final_table, 0); // should these be finalized?
 }

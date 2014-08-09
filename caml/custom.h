@@ -51,7 +51,12 @@ CAMLextern value caml_alloc_custom(struct custom_operations * ops,
                                    mlsize_t mem, /*resources consumed*/
                                    mlsize_t max  /*max resources*/);
 
+#ifdef MEM_DEBUG
+CAMLexport void caml_register_custom_operations_(struct custom_operations * ops, char *file, int line);
+#define caml_register_custom_operations(x) caml_register_custom_operations_(x, __FILE__, __LINE__)
+#else
 CAMLextern void caml_register_custom_operations(struct custom_operations * ops);
+#endif
 
 CAMLextern int caml_compare_unordered;
   /* Used by custom comparison to report unordered NaN-like cases. */

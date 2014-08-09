@@ -12,13 +12,13 @@ INCLUDES = \
 	-I$(KERNELSRC)/contrib/altq
 
 DEFINES = \
-	-DMEM_DEBUG \
 	-D_KERNEL \
 	-DKLD_MODULE \
 	-DCAML_NAME_SPACE \
 	-DNATIVE_CODE \
 	-DSYS_bsd_elf \
-	-DTARGET_$(PLATFORM)
+	-DTARGET_$(PLATFORM) \
+	#-DMEM_DEBUG 
 
 # These warnings seem to be turned off by general kernel compilation as well
 #
@@ -129,6 +129,8 @@ SRC += fixpt/fixmath.c
 SRC_ = ${SRC:.c=.o}
 OBJ  = ${SRC_:.S=.o}
 
+HDR != ls caml/*.h
+
 .PHONY: ocaml_lib clean test
 
 all: links libmir.a ocaml_lib test
@@ -141,7 +143,7 @@ x86:
 
 links: machine x86
 
-.c.o: 
+.c.o: $(HDR) ${.IMPSRC}
 	cc $(CLAGS) -o ${.TARGET} -c ${.IMPSRC}
 
 .S.o: 

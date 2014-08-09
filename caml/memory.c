@@ -607,7 +607,7 @@ CAMLexport void * caml_stat_alloc (asize_t sz)
 #endif
 
 #ifdef MEM_DEBUG
-  printf("ptr=%p sizea=%ld loc=%s:%i\n", result, sz, file, line);
+  printf("caml_stat_alloc: ptr=%p sizea=%ld loc=%s:%i\n", result, sz, file, line);
 #endif//MEM_DEBUG
 
   return result;

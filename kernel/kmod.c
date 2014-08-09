@@ -42,7 +42,7 @@
 #include <sys/systm.h>
 #include <sys/malloc.h>
 #include <sys/mbuf.h>
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 #include <sys/queue.h>
 #endif
 
@@ -88,7 +88,7 @@ static const char* module_name;
 
 static MALLOC_DEFINE(M_MIRAGE, "mirage", "Mirage/kFreeBSD");
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 enum allocation_type {
 	ALLOC_MALLOC,
 	ALLOC_CONTIG
@@ -208,7 +208,7 @@ mirage_kthread_launch(void)
 	thread_unlock(mirage_kthread);
 }
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 static void
 leakfinder_init(void)
 {
@@ -271,7 +271,7 @@ event_handler(struct module *module, int event, void *arg) {
 	switch (event) {
 	case MOD_LOAD:
 		module_name = module_getname(module);
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 		leakfinder_init();
 #endif
 		printf("[%s] Kernel module is about to load.\n", module_name);
@@ -330,7 +330,7 @@ allocated(void)
 	return alloced;
 }
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 static void
 register_allocation(void *addr, unsigned long size, char *file, int line,
     enum allocation_type atype, char *comment)
@@ -391,13 +391,13 @@ void *
 mir_malloc(unsigned long size, int flags)
 #endif
 {
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	void *p;
 #endif
 
 	if (allocated() + size > mirage_memlimit) return NULL;
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	p = malloc(size, M_MIRAGE, flags);
 
 	if (p != NULL)
@@ -421,7 +421,7 @@ mir_realloc(void *addr, unsigned long size, int flags)
 {
 	uma_slab_t slab;
 	u_long old_size;
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	void *p;
 #endif
 
@@ -435,7 +435,7 @@ mir_realloc(void *addr, unsigned long size, int flags)
 
 	if (allocated() + (size - old_size) > mirage_memlimit) return NULL;
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	p = realloc(addr, size, M_MIRAGE, flags);
 
 	if (p != NULL) {
@@ -461,13 +461,13 @@ mir_contigmalloc(unsigned long size, int flags, vm_paddr_t low,
     vm_paddr_t high, unsigned long alignment, unsigned long boundary)
 #endif
 {
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	void *p;
 #endif
 
 	if (allocated() + size > mirage_memlimit) return NULL;
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	p = contigmalloc(size, M_MIRAGE, flags, low, high, alignment,
 	    boundary);
 
@@ -491,7 +491,7 @@ mir_free(void *addr)
 #endif
 {
 	free(addr, M_MIRAGE);
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	unregister_allocation(addr, 0, file, line);
 #endif
 }
@@ -505,12 +505,12 @@ mir_contigfree(void *addr, unsigned long size)
 #endif
 {
 	contigfree(addr, size, M_MIRAGE);
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	unregister_allocation(addr, size, file, line);
 #endif
 }
 
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 static void
 check_for_leaks(void)
 {
@@ -576,7 +576,7 @@ mem_cleanup(void)
 	caml_free_minor_heap();
 	caml_deinit_major_heap();
 	caml_final_deinit();
-	//caml_deinit_custom_operations();
+	caml_deinit_custom_operations();
 	caml_deinit_atoms();
 	caml_free_global_roots();
 	caml_free_named_values();
@@ -584,7 +584,7 @@ mem_cleanup(void)
 	caml_deinit_frame_descriptors();
 	caml_page_table_deinitialize();
   caml_deinit_backtrace_buffer();
-#ifdef MEM_DEBUG
+#ifdef MEM_LEAK
 	check_for_leaks();
 #endif
 }
