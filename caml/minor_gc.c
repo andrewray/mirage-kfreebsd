@@ -102,6 +102,13 @@ void caml_set_minor_heap_size (asize_t size)
   reset_table (&caml_weak_ref_table);
 }
 
+void caml_free_minor_heap(void)
+{
+  reset_table(&caml_ref_table);
+  reset_table(&caml_weak_ref_table);
+  free(caml_young_base);
+}
+
 static value oldify_todo_list = 0;
 
 /* Note that the tests on the tag depend on the fact that Infix_tag,

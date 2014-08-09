@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 
+static struct ext_table caml_code_fragments_table;
+
+
 static void *getsym(void *handle, char *module, char *name){
   char *fullname = malloc(strlen(module) + strlen(name) + 5);
   void *sym;

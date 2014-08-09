@@ -101,6 +101,15 @@ int caml_page_table_initialize(mlsize_t bytesize)
     return 0;
 }
 
+void caml_page_table_deinitialize(void)
+{
+  caml_page_table.size = 0;
+  caml_page_table.shift = 0;
+  caml_page_table.mask = 0;
+  caml_page_table.occupancy = 0;
+  free(caml_page_table.entries);
+}
+
 static int caml_page_table_resize(void)
 {
   struct page_table old = caml_page_table;
@@ -583,7 +592,11 @@ CAMLexport CAMLweakdef void caml_modify (value *fp, value val)
   }
 }
 
+#ifdef MEM_DEBUG
+CAMLexport void * caml_stat_alloc_ (asize_t sz, char *file, int line)
+#else
 CAMLexport void * caml_stat_alloc (asize_t sz)
+#endif
 {
   void * result = malloc (sz);
 
@@ -592,6 +605,11 @@ CAMLexport void * caml_stat_alloc (asize_t sz)
 #ifdef DEBUG
   memset (result, Debug_uninit_stat, sz);
 #endif
+
+#ifdef MEM_DEBUG
+  printf("ptr=%p sizea=%ld loc=%s:%i\n", result, sz, file, line);
+#endif//MEM_DEBUG
+
   return result;
 }
 

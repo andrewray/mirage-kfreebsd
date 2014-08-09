@@ -72,6 +72,7 @@ void caml_garbage_collection(void)
   caml_process_pending_signals();
 }
 
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
 DECLARE_SIGNAL_HANDLER(handle_signal)
 {
   int saved_errno;
@@ -96,9 +97,11 @@ DECLARE_SIGNAL_HANDLER(handle_signal)
   }
   errno = saved_errno;
 }
+#endif /* __FreeBSD__ && _KERNEL */
 
 int caml_set_signal_action(int signo, int action)
 {
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   signal_handler oldact;
 #ifdef POSIX_SIGNALS
   struct sigaction sigact, oldsigact;
@@ -137,6 +140,7 @@ int caml_set_signal_action(int signo, int action)
   else if (oldact == SIG_IGN)
     return 1;
   else
+#endif
     return 0;
 }
 

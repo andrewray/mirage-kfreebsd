@@ -35,6 +35,11 @@
 #include "ui.h"
 #endif
 
+static struct ext_table caml_code_fragments_table;
+
+#if defined(__FreeBSD__) && defined(_KERNEL)
+char *get_rtparams(void);
+#endif
 extern int caml_parser_trace;
 CAMLexport header_t caml_atom_table[256];
 char * caml_code_area_start, * caml_code_area_end;
@@ -82,6 +87,11 @@ static void init_atoms(void)
   caml_ext_table_add(&caml_code_fragments_table, cf);
 }
 
+void caml_deinit_atoms(void)
+{
+  caml_ext_table_free(&caml_code_fragments_table, 1);
+}
+
 /* Configuration parameters and flags */
 
 static uintnat percent_free_init = Percent_free_def;
@@ -116,10 +126,17 @@ static void scanmult (char *opt, uintnat *var)
 
 static void parse_camlrunparam(void)
 {
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  char *opt;
+  uintnat p;
+
+  opt = get_rtparams();
+#else
   char *opt = getenv ("OCAMLRUNPARAM");
   uintnat p;
 
   if (opt == NULL) opt = getenv ("CAMLRUNPARAM");
+#endif
 
   if (opt != NULL){
     while (*opt != '\0'){
@@ -178,7 +195,9 @@ void caml_main(char **argv)
                 percent_free_init, max_percent_free_init);
   init_atoms();
   caml_init_signals();
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
   caml_debugger_init (); /* force debugger.o stub to be linked */
+#endif
   exe_name = argv[0];
   if (exe_name == NULL) exe_name = "";
 #ifdef __linux__
@@ -186,6 +205,8 @@ void caml_main(char **argv)
     exe_name = proc_self_exe;
   else
     exe_name = caml_search_exe_in_path(exe_name);
+#elif defined(__FreeBSD__) && defined(_KERNEL)
+  exe_name = "mirage.ko";
 #else
   exe_name = caml_search_exe_in_path(exe_name);
 #endif

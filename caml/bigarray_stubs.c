@@ -686,6 +686,11 @@ static void caml_ba_finalize(value v)
       }
     }
     break;
+#if defined(__FreeBSD__) && defined(_KERNEL)
+  case CAML_BA_MAPPED_FILE:
+    caml_failwith("CAML_BA_MAPPED_FILE: unsupported");
+    break;
+#else
   case CAML_BA_MAPPED_FILE:
     if (b->proxy == NULL) {
       caml_ba_unmap_file(b->data, caml_ba_byte_size(b));
@@ -696,6 +701,7 @@ static void caml_ba_finalize(value v)
       }
     }
     break;
+#endif
   }
 }
 
@@ -1288,3 +1294,12 @@ CAMLprim value caml_ba_init(value unit)
   caml_register_custom_operations(&caml_ba_ops);
   return Val_unit;
 }
+
+#if defined(__FreeBSD__) && defined(_KERNEL)
+CAMLprim value caml_ba_map_file(value vfd, value vkind, value vlayout,
+                                value vshared, value vdim, value vpos)
+{
+  caml_invalid_argument("Bigarray.map_file: not supported");
+  return Val_unit;
+}
+#endif

@@ -527,12 +527,16 @@ asize_t caml_round_heap_chunk_size (asize_t request)
   return result;
 }
 
+char *caml_heap_start_block;
+
 void caml_init_major_heap (asize_t heap_size)
 {
   caml_stat_heap_size = clip_heap_chunk_size (heap_size);
   caml_stat_top_heap_size = caml_stat_heap_size;
   Assert (caml_stat_heap_size % Page_size == 0);
   caml_heap_start = (char *) caml_alloc_for_heap (caml_stat_heap_size);
+  caml_heap_start_block = Chunk_block(caml_heap_start);
+
   if (caml_heap_start == NULL)
     caml_fatal_error ("Fatal error: not enough memory for the initial heap.\n");
   Chunk_next (caml_heap_start) = NULL;
@@ -557,4 +561,44 @@ void caml_init_major_heap (asize_t heap_size)
   heap_is_pure = 1;
   caml_allocated_words = 0;
   caml_extra_heap_resources = 0.0;
+}
+
+static void finalize_chunk(char *start)
+{
+  header_t hd;
+  char *p, *q;
+
+  p = start;
+  q = start + Chunk_size(start);
+
+  while (p < q) {
+    hd = Hd_hp(p);
+    if (Tag_hd(hd) == Custom_tag) {
+      void (*f)(value) = Custom_ops_val(Val_hp(p))->finalize;
+      if (f != NULL)
+        f(Val_hp(p));
+    }
+    p += Bhsize_hd(hd);
+  }
+}
+
+void caml_deinit_major_heap(void)
+{
+  char *p, *q;
+
+  p = Chunk_next(caml_heap_start);
+
+  while (p != NULL) {
+    q = Chunk_next(p);
+    finalize_chunk(p);
+    caml_free_for_heap(p);
+    p = q;
+    caml_stat_heap_chunks--;
+  }
+
+  finalize_chunk(caml_heap_start);
+  free(caml_heap_start_block);
+  gray_vals_cur = NULL;
+  gray_vals_end = NULL;
+  free(gray_vals);
 }

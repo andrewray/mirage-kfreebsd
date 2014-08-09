@@ -123,6 +123,20 @@ void caml_init_frame_descriptors(void)
   }
 }
 
+void caml_deinit_frame_descriptors(void)
+{
+  link *p, *q;
+
+  caml_stat_free(caml_frame_descriptors);
+  p = frametables;
+
+  while (p != NULL) {
+    q = p->next;
+    caml_stat_free(p);
+    p = q;
+  }
+}
+
 /* Communication with [caml_start_program] and [caml_call_gc]. */
 
 char * caml_top_of_stack;

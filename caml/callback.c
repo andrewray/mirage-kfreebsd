@@ -244,3 +244,20 @@ CAMLexport value * caml_named_value(char const *name)
   }
   return NULL;
 }
+
+void
+caml_free_named_values(void)
+{
+  int i;
+  struct named_value *p, *q;
+
+  for (i = 0; i < Named_value_size; i++) {
+    p = named_value_table[i];
+
+    while (p != NULL) {
+      q = p->next;
+      caml_stat_free(p);
+      p = q;
+    }
+  }
+}

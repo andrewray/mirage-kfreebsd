@@ -12,6 +12,7 @@ INCLUDES = \
 	-I$(KERNELSRC)/contrib/altq
 
 DEFINES = \
+	-DMEM_DEBUG \
 	-D_KERNEL \
 	-DKLD_MODULE \
 	-DCAML_NAME_SPACE \
@@ -116,11 +117,17 @@ SRC = \
 	caml/str.c \
 	caml/strstubs.c \
 	caml/sys.c \
-	caml/weak.c
+	caml/weak.c \
+	caml/amd64/amd64.S \
+	kernel/clock_stubs.c \
+	kernel/page_stubs.c \
+	/usr/home/andyman/dev/ocaml-cstruct-1.3.1/lib/cstruct_stubs.c \
+	kernel/kmod.c
 
 SRC += fixpt/fixmath.c
 
-OBJ = ${SRC:.c=.o}
+SRC_ = ${SRC:.c=.o}
+OBJ  = ${SRC_:.S=.o}
 
 all: links libmir.a
 
@@ -132,8 +139,11 @@ x86:
 
 links: machine x86
 
-.c.o: $(SRC)
+.c.o: 
 	cc $(CLAGS) -o ${.TARGET} -c ${.IMPSRC}
+
+.S.o: 
+	cc $(CLAGS) -D__ASSEMBLY__ -o ${.TARGET} -c ${.IMPSRC}
 
 libmir.a: $(OBJ)
 	ar rc libmir.a $(OBJ)

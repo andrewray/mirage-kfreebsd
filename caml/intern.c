@@ -30,6 +30,8 @@
 #include "misc.h"
 #include "reverse.h"
 
+static struct ext_table caml_code_fragments_table;
+
 static unsigned char * intern_src;
 /* Reading pointer in block holding input data. */
 

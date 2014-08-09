@@ -60,6 +60,8 @@ CAMLprim value caml_reify_bytecode(value prog, value len)
   return clos;
 }
 
+static struct ext_table caml_code_fragments_table;
+
 CAMLprim value caml_register_code_fragment(value prog, value len, value digest)
 {
   struct code_fragment * cf = caml_stat_alloc(sizeof(struct code_fragment));

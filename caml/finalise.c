@@ -247,3 +247,8 @@ CAMLprim value caml_final_release (value unit)
   running_finalisation_function = 0;
   return Val_unit;
 }
+
+void caml_final_deinit(void)
+{
+  caml_stat_free(final_table);
+}

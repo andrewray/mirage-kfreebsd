@@ -173,6 +173,14 @@ struct global_root_list caml_global_roots_young = { NULL, { NULL, }, 0 };
 struct global_root_list caml_global_roots_old = { NULL, { NULL, }, 0 };
                   /* generational roots pointing to major heap */
 
+void
+caml_free_global_roots(void)
+{
+	caml_empty_global_roots(&caml_global_roots);
+	caml_empty_global_roots(&caml_global_roots_young);
+	caml_empty_global_roots(&caml_global_roots_old);
+}
+
 /* Register a global C root of the mutable kind */
 
 CAMLexport void caml_register_global_root(value *r)

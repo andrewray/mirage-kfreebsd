@@ -16,7 +16,7 @@
 
 /* PIC mode support based on contribution by Paul Stravers (see PR#4795) */
 
-#include "../config/m.h"
+#include "m.h"
 
 #if defined(SYS_macosx)
 
@@ -30,6 +30,21 @@
 #define FUNCTION(name) \
         .globl name; \
         .align FUNCTION_ALIGN; \
+        name:
+
+#elif defined(__FreeBSD__) && defined(_KERNEL)
+
+#define LBL(x)                  .L##x
+#define G(r)                    r
+#define GREL(r)                 r
+#define GCALL(r)                r
+#define FUNCTION_ALIGN          4
+#define EIGHT_ALIGN             8
+#define SIXTEEN_ALIGN           16
+#define FUNCTION(name)          \
+        .globl name;            \
+        .type name,@function;   \
+        .align FUNCTION_ALIGN;  \
         name:
 
 #elif defined(SYS_mingw64)
@@ -90,7 +105,7 @@
 
 #endif
 
-#if defined(__PIC__) && !defined(SYS_mingw64)
+#if defined(__PIC__) && !defined(SYS_mingw64) || (!defined(__FreeBSD__) && !defined(_KERNEL))
 
 /* Position-independent operations on global variables. */
 
@@ -295,6 +310,7 @@ LBL(caml_call_gc):
         STORE_VAR(%r14, caml_exception_pointer)
     /* Save floating-point registers */
         subq    $(16*8), %rsp; CFI_ADJUST (16*8);
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
         movsd   %xmm0, 0*8(%rsp)
         movsd   %xmm1, 1*8(%rsp)
         movsd   %xmm2, 2*8(%rsp)
@@ -311,6 +327,7 @@ LBL(caml_call_gc):
         movsd   %xmm13, 13*8(%rsp)
         movsd   %xmm14, 14*8(%rsp)
         movsd   %xmm15, 15*8(%rsp)
+#endif
     /* Call the garbage collector */
         PREPARE_FOR_C_CALL
         call    GCALL(caml_garbage_collection)
@@ -318,6 +335,7 @@ LBL(caml_call_gc):
     /* Restore caml_young_ptr, caml_exception_pointer */
         LOAD_VAR(caml_young_ptr, %r15)
         LOAD_VAR(caml_exception_pointer, %r14)
+#if !defined(__FreeBSD__) && !defined(_KERNEL)
     /* Restore all regs used by the code generator */
         movsd   0*8(%rsp), %xmm0
         movsd   1*8(%rsp), %xmm1
@@ -335,6 +353,7 @@ LBL(caml_call_gc):
         movsd   13*8(%rsp), %xmm13
         movsd   14*8(%rsp), %xmm14
         movsd   15*8(%rsp), %xmm15
+#endif
         addq    $(16*8), %rsp; CFI_ADJUST(-16*8)
         popq    %rax; CFI_ADJUST(-8)
         popq    %rbx; CFI_ADJUST(-8)
@@ -440,7 +459,11 @@ LBL(caml_c_call):
         popq    %r12; CFI_ADJUST(-8)
         STORE_VAR(%r12, caml_last_return_address)
         STORE_VAR(%rsp, caml_bottom_of_stack)
+#if defined(__FreeBSD__) && defined(_KERNEL)
+        pushq    %r12; CFI_ADJUST(8)
+#else
         subq    $8, %rsp; CFI_ADJUST(8) /* equivalent to pushq %r12 */
+#endif
 #ifndef SYS_mingw64
     /* Touch the stack to trigger a recoverable segfault
        if insufficient space remains */

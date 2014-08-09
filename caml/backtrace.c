@@ -353,3 +353,8 @@ CAMLprim value caml_get_exception_backtrace(value unit)
   res = caml_convert_raw_backtrace(raw);
   CAMLreturn(res);
 }
+
+void caml_deinit_backtrace_buffer(void) {
+  if (caml_backtrace_buffer != NULL) free(caml_backtrace_buffer);
+}
+
